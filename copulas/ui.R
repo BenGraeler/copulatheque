@@ -1,3 +1,5 @@
+# shiny-app copulas
+
 library(shiny)
 
 # Define UI for miles per gallon application
@@ -12,7 +14,9 @@ shinyUI(pageWithSidebar(
                a("VineCopula", href="http://cran.r-project.org/web/packages/VineCopula/index.html", target="_blank"), 
                "and",
                a("spcopula", href="http://r-forge.r-project.org/projects/spcopula/", target="_blank"), 
-               "R packages. Please select the copula family and corresponding parameters below.",
+               "R packages. This and additional scripts can be found in my",
+               a("GitHub repository.", href="http://github.com/BenGraeler/shiny-apps/", target="_blank"),
+               "Please select the copula family and corresponding parameters below.",               
                selectInput("family", "Copula family", 
                            list("Asymmetric Copula" =  "asCopula",
                                 "BB1: Clayton-Gumbel" = "BB1Copula",
@@ -26,6 +30,8 @@ shinyUI(pageWithSidebar(
                                 "Gumbel Copula" = "gumbelCopula",
                                 "Joe Copula" = "joeBiCopula",
                                 "Student t Copula" = "tCopula",
+                                "Tawn type 1 Copula" = "tawnT1Copula",
+                                "Tawn type 2 Copula" = "tawnT2Copula",
                                 "biv. Spatial Copula" = "spCopula")),
                
                # asCopula and cqsCopula
@@ -146,6 +152,20 @@ shinyUI(pageWithSidebar(
                conditionalPanel(condition = "input.family == 'tCopula'",
                                 sliderInput("df", "degrees of freedom:",
                                             min=0, max=20, value=2, step=0.01)),
+               
+               ## Tawn Copula
+               # none and survival
+               conditionalPanel(condition = "(input.family == 'tawnT1Copula' || input.family == 'tawnT2Copula') && (input.rot == 'none' || input.rot == 'sur')",
+                                sliderInput("param1TawnPos", "first parameter:",
+                                            min=1, max=10, value=1, step=0.01),
+                                sliderInput("param2TawnPos", "second parameter:",
+                                            min=0, max=1, value=0.5, step=0.01)),
+               # r90 and r270
+               conditionalPanel(condition = "(input.family == 'tawnT1Copula' || input.family == 'tawnT2Copula') && (input.rot == 'r90' || input.rot == 'r270')",
+                                sliderInput("param1TawnNeg", "first parameter:",
+                                            min=-10, max=-1, value=-1, step=0.01),
+                                sliderInput("param2TawnNeg", "second parameter:",
+                                            min=0, max=1, value=0.5, step=0.01)),
                
                ## Bivariate Spatial Copula
                conditionalPanel(condition = "input.family == 'spCopula'",

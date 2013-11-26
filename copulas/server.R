@@ -1,3 +1,5 @@
+# shiny-app copulas
+
 library(shiny)
 library(spcopula)
 
@@ -66,6 +68,22 @@ rotateJoe <- function(input) {
          r270 = r270JoeBiCopula(input$paramJoeNeg))
 }
 
+rotateTawnT1 <- function(input) {
+  switch(input$rot,
+         none = tawnT1Copula(c(input$param1TawnPos, input$param2TawnPos)),
+         r90 = r90TawnT1Copula(c(input$param1TawnNeg, input$param2TawnNeg)),
+         sur = surTawnT1Copula(c(input$param1TawnPos, input$param2TawnPos)),
+         r270 = r270TawnT1Copula(c(input$param1TawnNeg, input$param2TawnNeg)))
+}
+
+rotateTawnT2 <- function(input) {
+  switch(input$rot,
+         none = tawnT2Copula(c(input$param1TawnPos, input$param2TawnPos)),
+         r90 = r90TawnT2Copula(c(input$param1TawnNeg, input$param2TawnNeg)),
+         sur = surTawnT2Copula(c(input$param1TawnPos, input$param2TawnPos)),
+         r270 = r270TawnT2Copula(c(input$param1TawnNeg, input$param2TawnNeg)))
+}
+
 loadSpCop <- function() {
   data(spCopDemo)
   
@@ -132,6 +150,8 @@ shinyServer(function(input, output) {
                          gumbelCopula = rotateGumbel(input),
                          joeBiCopula = rotateJoe(input),
                          tCopula = tCopula(input$paramEllip, df=input$df),
+                         tawnT1Copula = rotateTawnT1(input),
+                         tawnT2Copula = rotateTawnT2(input),
                          spCopula = loadSpCop()))
   
   corFun <- reactive({
@@ -175,6 +195,6 @@ shinyServer(function(input, output) {
            main=paste("sample of size", input$sampleSize),
            xlab="u", ylab="v")
     }
-  })
+  }, height="auto")
   
 })
