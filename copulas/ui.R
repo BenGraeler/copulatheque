@@ -142,11 +142,11 @@ shinyUI(pageWithSidebar(
                # none and sur
                conditionalPanel(condition = "input.family == 'joeBiCopula' && (input.rot == 'none' || input.rot == 'sur')",
                                 sliderInput("paramJoePos", "parameter:",
-                                            min=1.1, max=10, value=2, step=0.01)),
+                                            min=1.01, max=10, value=2, step=0.01)),
                # r90 and r270
                conditionalPanel(condition = "input.family == 'joeBiCopula' && (input.rot == 'r90' || input.rot == 'r270')",
                                 sliderInput("paramJoeNeg", "parameter:",
-                                            min=-10, max=-1.1, value=-2, step=0.01)),
+                                            min=-10, max=-1.01, value=-2, step=0.01)),
                
                ## Student t Copulas
                conditionalPanel(condition = "input.family == 'tCopula'",
