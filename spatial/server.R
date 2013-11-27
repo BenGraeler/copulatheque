@@ -1,4 +1,5 @@
 ## spatial
+# setwd("spatial/")
 
 library(shiny)
 library(shinyRGL)
