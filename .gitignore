@@ -1,6 +1,7 @@
 # History files
-.Rhistory
+*.Rhistory
 # Example code in package build process
 *-Ex.R
-.Rproj.user
-shiny-apps.Rproj
+# RStudio project files
+*.Rproj.user
+*.Rproj
