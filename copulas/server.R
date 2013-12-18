@@ -97,13 +97,42 @@ loadSpCop <- function() {
                     spDepFun=calcKTauPol, unit="m")
 }
 
+perspGauss <- function (copula, ...) {
+  n <- 51
+  xis <- yis <- seq(-3, 3, len = n)
+  uis <- vis <- pnorm(xis)
+  grids <- as.matrix(expand.grid(uis, vis, KEEP.OUT.ATTRS = FALSE))
+  zmat <- matrix(dCopula(grids, copula)*dnorm(qnorm(grids[,1]))*dnorm(qnorm(grids[,2])), n, n)
+  persp(xis, yis, zmat, theta = -30, phi = 30, expand = 0.618,  ...)
+}
+
+contourGauss <- function (copula, ...) {
+  n <- 51
+  xis <- yis <- seq(-3, 3, len = n)
+  uis <- vis <- pnorm(xis)
+  grids <- as.matrix(expand.grid(uis, vis, KEEP.OUT.ATTRS = FALSE))
+  zmat <- matrix(dCopula(grids, copula)*dnorm(qnorm(grids[,1]))*dnorm(qnorm(grids[,2])), n, n)
+  contour(xis, yis, zmat,asp=1, ...)
+}
+
 spatialPersp <- function (copula, h, ...) {
   n <- 51
   eps <- 0
-  xis <- yis <- seq(0 + eps, 1 - eps, len = n)
+  xis <- yis <- seq(0+eps, 1 - eps, len = n)
   grids <- as.matrix(expand.grid(xis, yis, KEEP.OUT.ATTRS = FALSE))
   zmat <- matrix(dCopula(grids, copula, h=h), n, n)
   persp(xis, yis, zmat, theta = -30, phi = 30, expand = 0.618, ...)
+}
+
+spatialPerspGauss <- function (copula, h, ...) {
+  n <- 51
+  xis <- yis <- seq(-3, 3, len = n)
+  uis <- vis <- pnorm(xis)
+  grids <- as.matrix(expand.grid(uis, vis, KEEP.OUT.ATTRS = FALSE))
+  zmat <- matrix(dCopula(grids, copula, h=h)*dnorm(qnorm(grids[,1]))*dnorm(qnorm(grids[,2])), n, n)
+  par(mfrow=c(1,2))
+  persp(xis, yis, zmat, theta = -30, phi = 30, expand = 0.618,  ...)
+  contour(xis, yis, zmat,asp=1)
 }
 
 shinyServer(function(input, output) {
@@ -154,6 +183,10 @@ shinyServer(function(input, output) {
                          tawnT2Copula = rotateTawnT2(input),
                          spCopula = loadSpCop()))
   
+  mar <- reactive(switch(input$margin,
+                         unif = qunif,
+                         norm = qnorm))
+  
   corFun <- reactive({
       data(spCopDemo)
       calcKTauPol <- fitCorFun(bins, degree=3)
@@ -180,20 +213,45 @@ shinyServer(function(input, output) {
       NULL
     })
   
+  output$tailIndex <- renderText({
+    if(class(cop())!="spCopula")
+      paste("lower and upper tail dependence:", paste(round(tailIndex(cop()),2), collapse=", "))
+    else
+      NULL
+  })
+  
   output$copulaPlots <- renderPlot({
     par(mfrow=c(1,2))
-    if (class(cop()) == "spCopula")
-      spatialPersp(cop(), h=input$spatialDistance,  
-                   xlab="u", ylab="v",
-                   zlab="", main="strength of dependence",
+    if (class(cop()) == "spCopula") {
+      if(input$margin=="norm")
+        spatialPerspGauss(cop(), h=input$spatialDistance,
+                          xlab="x", ylab="y",
+                          zlab="", main="bivariate density",
+                          ticktype="detailed")
+      else
+        spatialPersp(cop(), h=input$spatialDistance,
+                     xlab="x", ylab="y",
+                     zlab="", main="strength of dependence",
+                     ticktype="detailed")
+    } else {
+      if(input$margin=="norm") {
+        perspGauss(cop(), xlab="x", ylab="y",
+                   zlab="", main="bivariate density",
                    ticktype="detailed")
-    else {
-      persp(cop(), dCopula, xlab="u", ylab="v",
-            zlab="", main="strength of dependence",
-            ticktype="detailed")
-      plot(rCopula(input$sampleSize, cop()), asp=1, 
-           main=paste("sample of size", input$sampleSize),
-           xlab="u", ylab="v")
+        if(input$sampleSize > 10)
+          plot(qnorm(rCopula(input$sampleSize, cop())), asp=1, 
+               main=paste("sample of size", input$sampleSize),
+               xlab="x", ylab="y")
+        else
+          contourGauss(cop(), xlab="x", ylab="y")
+      } else {
+        persp(cop(), dCopula, xlab="u", ylab="v",
+              zlab="", main="strength of dependence",
+              ticktype="detailed")
+        plot(rCopula(input$sampleSize, cop()), asp=1, 
+             main=paste("sample of size", input$sampleSize),
+             xlab="u", ylab="v")
+      }
     }
   }, height="auto")
   

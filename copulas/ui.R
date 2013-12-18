@@ -34,6 +34,10 @@ shinyUI(pageWithSidebar(
                                 "Tawn type 2 Copula" = "tawnT2Copula",
                                 "biv. Spatial Copula" = "spCopula")),
                
+               selectInput("margin", "Marignal distribution function",
+                           list("uniform" = "unif",
+                                "Guassian" = "norm")),
+               
                # asCopula and cqsCopula
                conditionalPanel(condition = "input.family == 'cqsCopula' || input.family == 'asCopula'",
                                 sliderInput("b", "parameter b:",
@@ -176,12 +180,13 @@ shinyUI(pageWithSidebar(
                
                # sample length
                conditionalPanel(condition = "input.family != 'spCopula'",
-                                sliderInput("sampleSize", "sample size:",
+                                sliderInput("sampleSize", "sample size (set to minimum for a contour plot):",
                                             min=10, max=1000, value=250, step=1)
                                 )),
   
   mainPanel(
     h3(textOutput("caption")),
     plotOutput("copulaPlots"),
-    textOutput("kendallsTau"))  
+    textOutput("kendallsTau"),
+    textOutput("tailIndex"))  
 ))
