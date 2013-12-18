@@ -36,7 +36,7 @@ shinyUI(pageWithSidebar(
                
                selectInput("margin", "Marignal distribution function",
                            list("uniform" = "unif",
-                                "Guassian" = "norm")),
+                                "Gaussian" = "norm")),
                
                # asCopula and cqsCopula
                conditionalPanel(condition = "input.family == 'cqsCopula' || input.family == 'asCopula'",
