@@ -2,6 +2,7 @@
 # setwd("spatial/")
 
 library(shiny)
+options(rgl.useNULL=TRUE)
 library(shinyRGL)
 library(gstat)
 

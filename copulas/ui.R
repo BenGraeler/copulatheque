@@ -15,7 +15,7 @@ shinyUI(pageWithSidebar(
                "and",
                a("spcopula", href="http://r-forge.r-project.org/projects/spcopula/", target="_blank"), 
                "R packages. This and additional scripts can be found in my",
-               a("GitHub repository.", href="http://github.com/BenGraeler/shiny-apps/", target="_blank"),
+               a("GitHub repository.", href="http://github.com/BenGraeler/copulatheque/", target="_blank"),
                "Please select the copula family and corresponding parameters below.",               
                selectInput("family", "Copula family", 
                            list("Asymmetric Copula" =  "asCopula",
