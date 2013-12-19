@@ -6,7 +6,7 @@ library(shiny)
 shinyUI(pageWithSidebar(
   
   # Application title
-  headerPanel("Different Copula Families"),
+  headerPanel("Copulatheque"),
   
   sidebarPanel("This small shiny app illustrates a couple of copula families implemented in the", 
                a("copula", href="http://cran.r-project.org/web/packages/copula/index.html", target="_blank"), 
