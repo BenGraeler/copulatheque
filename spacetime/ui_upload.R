@@ -1,7 +1,6 @@
 # spatial
 
 library(shiny)
-
 load("fittedSTvariogramModels.RData")
 
 # Define UI for miles per gallon application
@@ -15,6 +14,7 @@ shinyUI(pageWithSidebar(
                HTML("The sample variogram is calculated from daily mean PM<sub>10</sub>"),
                "concentrations across Germany during the year 2005 (see 'demo(stkrige)' in gstat).",
                "Please direct any comments to", a("Benedikt Gräler", href="http://ifgi.de/graeler/", target="_blank"),".", br(),br(),
+               fileInput("dataFile", "Choose a local RData file containing a spatio-temporal sample variogram object called vv."),
                selectInput("family", "Variogram family:", 
                            list("separable cov. model" =  "separable",
                                 "product-sum cov. model" = "productSum",
@@ -28,7 +28,7 @@ shinyUI(pageWithSidebar(
                # separable model
                conditionalPanel(condition = "input.family == 'separable'",
                                 sliderInput("sep.sill", "spatio-temporal sill:",
-                                            min = 0, max = 160, 
+                                            min = 0, max = 80, 
                                             value = round(fitSepModel$sill,digits=1), 
                                             step=0.1),
                                 sliderInput("sep.space.sill", "spatial sill:",
@@ -62,7 +62,7 @@ shinyUI(pageWithSidebar(
                # product-sum model
                conditionalPanel(condition = "input.family == 'productSum'",
                                 sliderInput("ps.sill", "spatio-temporal sill:",
-                                            min = 0, max = 160, 
+                                            min = 0, max = 80, 
                                             value = round(fitProdSumModel$sill, digits=1), 
                                             step=0.1),
                                 sliderInput("ps.nugget", "spatio-temporal nugget:",
@@ -70,7 +70,7 @@ shinyUI(pageWithSidebar(
                                             value = round(fitProdSumModel$nugget, digits=1), 
                                             step=0.1),
                                 sliderInput("ps.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitProdSumModel$space$psill, digits=1), 
                                             step=0.1),
                                 selectInput("ps.space.fam", "spatial variogram family:",
@@ -84,7 +84,7 @@ shinyUI(pageWithSidebar(
                                             step=1),
                                 
                                 sliderInput("ps.time.sill", "temporal sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitProdSumModel$time$psill, digits=2), 
                                             step=0.1),
                                 selectInput("ps.time.fam", "temporal variogram family:",
@@ -100,11 +100,11 @@ shinyUI(pageWithSidebar(
                # sum-metric model
                conditionalPanel(condition = "input.family == 'sumMetric'",
                                 sliderInput("sumMetric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
+                                            min = 0, max = 200, 
                                             value = round(fitSumMetricModel$stAni, digits=1), 
                                             step=0.1),
                                 sliderInput("sumMetric.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitSumMetricModel$space$psill[2], digits=1), 
                                             step=0.1),
                                 selectInput("sumMetric.space.fam", "spatial variogram family:",
@@ -122,7 +122,7 @@ shinyUI(pageWithSidebar(
                                             step=0.1),
                                 
                                 sliderInput("sumMetric.time.sill", "temporal sill:",
-                                            min = 0.01, max = 160, 
+                                            min = 0.01, max = 20, 
                                             value = round(fitSumMetricModel$time$psill[2], digits=2), 
                                             step=0.01),
                                 selectInput("sumMetric.time.fam", "temporal variogram family:",
@@ -131,16 +131,16 @@ shinyUI(pageWithSidebar(
                                                  "Lin" = "Lin"),
                                             selected=fitSumMetricModel$time$model[2]),
                                 sliderInput("sumMetric.time.range", "temporal range [days]:",
-                                            min = 0.1, max = 20, 
+                                            min = 1, max = 500, 
                                             value = round(fitSumMetricModel$time$range[2], digits=0), 
-                                            step=0.1),
+                                            step=1),
                                 sliderInput("sumMetric.time.nugget", "temporal nugget:",
                                             min = 0, max = 80, 
                                             value = round(fitSumMetricModel$time$psill[1], digits=1), 
                                             step=0.1),
                                 
                                 sliderInput("sumMetric.joint.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitSumMetricModel$joint$psill[2], digits=1), 
                                             step=0.1),
                                 selectInput("sumMetric.joint.fam", "joint variogram family:",
@@ -160,7 +160,7 @@ shinyUI(pageWithSidebar(
                # simple-sum-metric model
                conditionalPanel(condition = "input.family == 'simpleSumMetric'",
                                 sliderInput("simpleSumMetric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
+                                            min = 0, max = 200, 
                                             value = round(fitSimpleSumMetricModel$stAni, digits=1), 
                                             step=0.1),
                                 sliderInput("simpleSumMetric.nugget", "spatio-temporal nugget:",
@@ -168,7 +168,7 @@ shinyUI(pageWithSidebar(
                                             value = round(fitSimpleSumMetricModel$nugget, digits=1), 
                                             step=0.1),
                                 sliderInput("simpleSumMetric.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitSimpleSumMetricModel$space$psill, digits=1), 
                                             step=0.1),
                                 selectInput("simpleSumMetric.space.fam", "spatial variogram family:",
@@ -182,7 +182,7 @@ shinyUI(pageWithSidebar(
                                             step=1),                                
                                 
                                 sliderInput("simpleSumMetric.time.sill", "temporal sill:",
-                                            min = 0.01, max = 160, 
+                                            min = 0.01, max = 20, 
                                             value = round(fitSimpleSumMetricModel$time$psill, digits=2), 
                                             step=0.01),
                                 selectInput("simpleSumMetric.time.fam", "temporal variogram family:",
@@ -196,7 +196,7 @@ shinyUI(pageWithSidebar(
                                             step=0.1),
                             
                                 sliderInput("simpleSumMetric.joint.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitSimpleSumMetricModel$joint$psill, digits=1), 
                                             step=0.1),
                                 selectInput("simpleSumMetric.joint.fam", "joint variogram family:",
@@ -212,11 +212,11 @@ shinyUI(pageWithSidebar(
                # metric model
                conditionalPanel(condition = "input.family == 'metric'",
                                 sliderInput("metric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
+                                            min = 0, max = 200, 
                                             value = round(fitMetricModel$stAni, digits=1), 
                                             step=0.1),
                                 sliderInput("metric.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
+                                            min = 0.1, max = 80, 
                                             value = round(fitMetricModel$joint$psill[2], digits=1), 
                                             step=0.1),
                                 selectInput("metric.fam", "joint variogram family:",

@@ -1,7 +1,8 @@
 ## spatial
 # setwd("spatial/")
-library(gstat)
+
 library(shiny)
+library(gstat)
 
 load("fittedSTvariogramModels.RData")
 data(vv)
@@ -127,6 +128,16 @@ shinyServer(function(input, output) {
                                       simpleSumMetric = "simple sum-metric covariance model",
                                       metric = "metric covariance model"))
   
+  smplVgm <- reactive({
+      if(is.null(input$dataFile)){
+        data(vv)
+        return(vv)
+      } else {
+        print(str(input$dataFile))
+        load(input$dataFile$datapath)
+        return(vv)
+      }})
+  
   acModel <-reactive(switch(input$family,
                             separable = vgmST("separable", 
                                               space=vgm(input$sep.space.sill,
@@ -182,8 +193,8 @@ shinyServer(function(input, output) {
   
   output$vgmPlot <- renderPlot({
     switch(input$type,
-           levelplot = print(plot(vv, acModel())),
-           wireframe = print(plotStVariogram(vv, acModel(), wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE))))
+           levelplot = print(plot(smplVgm(), acModel())),
+           wireframe = print(plotStVariogram(smplVgm(), acModel(), wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE))))
     }, width=800, height=400)
   
   validPS <- function(model) {
