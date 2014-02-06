@@ -1,6 +1,7 @@
 # spatial
 
 library(shiny)
+
 load("fittedSTvariogramModels.RData")
 
 # Define UI for miles per gallon application

@@ -4,6 +4,7 @@
 library(shiny)
 library(gstat)
 
+
 load("fittedSTvariogramModels.RData")
 data(vv)
 
