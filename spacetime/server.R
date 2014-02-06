@@ -1,9 +1,7 @@
 ## spatial
 # setwd("spatial/")
-
-library(shiny)
 library(gstat)
-
+library(shiny)
 
 load("fittedSTvariogramModels.RData")
 data(vv)
