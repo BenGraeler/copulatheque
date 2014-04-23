@@ -130,7 +130,7 @@ data.z <- vv$gamma
 
 xlim <- range(data.x)
 ylim <- range(data.y)
-zlim <- range(data.z)
+zlim <- range(data.z, na.rm=TRUE)
 
 asp <- c(y=1,z=1)
 
@@ -157,7 +157,7 @@ lollipop3d <- function(surf.fun,
 
   surf.z <- outer(surf.x,surf.y,surf.fun)  ## requires surf.fun be vectorized
   z.interc <- surf.fun(data.x,data.y)
-  zdiff <- diff(range(c(surf.z,data.z)))
+  zdiff <- diff(range(c(surf.z,data.z), na.rm=TRUE))
   
   xdiff <- diff(xlim)
   ydiff <- diff(ylim)
