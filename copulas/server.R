@@ -1,7 +1,10 @@
 # shiny-app copulas
 
 library(shiny)
+library(copula)
+library(VineCopula)
 library(spcopula)
+
 
 # Define server logic
 
@@ -140,7 +143,7 @@ shinyServer(function(input, output) {
   # generate conditional slider
   output$paramA <- renderUI({
     paramB <- input$b
-    limA <- spcopula:::limA(paramB)
+    limA <- ceiling(spcopula:::limA(paramB)*10)/10
     
     # check whether slider "a" has once been acivated
     if(is.null(input$a))
@@ -215,7 +218,7 @@ shinyServer(function(input, output) {
   
   output$tailIndex <- renderText({
     if(class(cop())!="spCopula")
-      paste("lower and upper tail dependence:", paste(round(tailIndex(cop()),2), collapse=", "))
+      paste("lower and upper tail dependence:", paste(round(lambda(cop()),2), collapse=", "))
     else
       NULL
   })
