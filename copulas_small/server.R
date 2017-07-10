@@ -51,7 +51,7 @@ shinyServer(function(input, output) {
                          gumbelCopula = gumbelCopula(input$paramGumbel),
                          tCopula = tCopula(input$paramEllip, df=input$df)))
   
-  output$caption <- renderText(cop()@fullname)
+  output$caption <- renderText(describeCop(cop(), "very short"))
   
   fun <- reactive(switch(input$fun,
                          dCopula = dCopula,

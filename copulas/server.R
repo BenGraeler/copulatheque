@@ -207,7 +207,7 @@ shinyServer(function(input, output) {
       NULL
   })
   
-  output$caption <- renderText(cop()@fullname)
+  output$caption <- renderText(describeCop(cop(), "very short"))
   
   output$kendallsTau <- renderText({
     if(class(cop())!="spCopula")
