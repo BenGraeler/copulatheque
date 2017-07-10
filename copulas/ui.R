@@ -183,7 +183,8 @@ fluidPage(title="Copulatheque",
                                   sliderInput("sampleSize", "sample size (set to minimum for a contour plot):",
                                               min=10, max=1000, value=250, step=1)),
                  
-                 "Written by", a("Benedikt Gräler", href="http://ben.graeler.org", target="_blank")),
+                 "Written by", a("Benedikt Gräler", href="http://ben.graeler.org", target="_blank"),
+                 "and hosted at", a("52°North", href="http://52north.org", target="_blank"), "."),
   
   mainPanel(
     h3(textOutput("caption")),
