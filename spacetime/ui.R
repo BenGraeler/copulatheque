@@ -1,6 +1,7 @@
 # spatial
 
 library(shiny)
+library(gstat)
 
 load("fittedSTvariogramModels.RData")
 
