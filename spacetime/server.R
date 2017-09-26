@@ -141,12 +141,13 @@ shinyServer(function(input, output) {
                             productSum = vgmST("productSum", 
                                                space=vgm(input$ps.space.sill,
                                                          input$ps.space.fam,
-                                                         input$ps.space.range),
+                                                         input$ps.space.range,
+                                                         input$ps.space.nugget),
                                                time=vgm(input$ps.time.sill,
                                                         input$ps.time.fam,
-                                                        input$ps.time.range),
-                                               sill=input$ps.sill,
-                                               nugget=input$ps.nugget),
+                                                        input$ps.time.range,
+                                                        input$ps.time.nugget),
+                                               k=input$ps.k),
                             sumMetric = vgmST("sumMetric", 
                                               space=vgm(input$sumMetric.space.sill,
                                                         input$sumMetric.space.fam,
@@ -186,18 +187,5 @@ shinyServer(function(input, output) {
            wireframe = print(plotStVariogram(vv, acModel(), wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE))))
     }, width=800, height=400)
   
-  validPS <- function(model) {
-    if(model$stModel != "productSum")
-      return(NULL)
-    k <- (sum(model$space$psill) + sum(model$time$psill) - model$sill)/(sum(model$space$psill) * sum(model$time$psill))
-    if (k <= 0 | k > 1/max(model$space$psill[model$space$model != "Nug"],
-                           model$time$psill[model$time$model != "Nug"])) 
-      return("Invalid model: try different sill values.")
-    return(NULL)
-  }
-  
-  output$valid <- renderText(validPS(acModel()))
-#   output$rmse <- renderText(paste("The root-mean-squared-error of the following model is:",
-#                                   round(attr(acModel(),"optim.output")$value,2)))
   output$model <- renderPrint(printStVariogramModel(acModel()))
 })
