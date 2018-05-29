@@ -3,8 +3,6 @@
 library(shiny)
 
 fluidPage(title="Copulatheque", 
-  tags$head(includeScript("gAnalytics.js")),
-  
   headerPanel("Copulatheque"),
   
   sidebarLayout(
@@ -189,6 +187,9 @@ fluidPage(title="Copulatheque",
   mainPanel(
     h3(textOutput("caption")),
     plotOutput("copulaPlots"),
+    h3(""),
+    conditionalPanel(condition = "input.family != 'spCopula'",
+                     h4("Dependence properties")),
     textOutput("kendallsTau"),
     textOutput("tailIndex"))  
 ))

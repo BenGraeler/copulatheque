@@ -109,13 +109,24 @@ perspGauss <- function (copula, ...) {
   persp(xis, yis, zmat, theta = -30, phi = 30, expand = 0.618,  ...)
 }
 
+
 contourGauss <- function (copula, ...) {
   n <- 51
-  xis <- yis <- seq(-3, 3, len = n)
-  uis <- vis <- pnorm(xis)
-  grids <- as.matrix(expand.grid(uis, vis, KEEP.OUT.ATTRS = FALSE))
-  zmat <- matrix(dCopula(grids, copula)*dnorm(qnorm(grids[,1]))*dnorm(qnorm(grids[,2])), n, n)
-  contour(xis, yis, zmat,asp=1, ...)
+  x <- seq(-3, 3, len = n)
+  u <- pnorm(x)
+  grids <- as.matrix(expand.grid(u, u, KEEP.OUT.ATTRS = FALSE))
+  contour(x, x, matrix(dCopula(grids, copula) * dnorm(qnorm(grids[, 1])) *
+                         dnorm(qnorm(grids[, 2])), n, n), asp = 1, ...)
+}
+
+contourCop <- function (copula, ...) {
+  n <- 101
+  u <- seq(0.01, 0.99, len = n)
+  zmat <- matrix(dCopula(as.matrix(expand.grid(u, u, 
+                                               KEEP.OUT.ATTRS = FALSE)),
+                         copula),
+                 n, n)
+  contour(u, u, zmat, asp = 1, ..., levels=quantile(as.numeric(zmat)))
 }
 
 spatialPersp <- function (copula, h, ...) {
@@ -233,27 +244,38 @@ shinyServer(function(input, output) {
                           ticktype="detailed")
       else
         spatialPersp(cop(), h=input$spatialDistance,
-                     xlab="x", ylab="y",
-                     zlab="", main="strength of dependence",
+                     xlab="x", ylab="y", zlab="", 
+                     main="copula density", 
+                     sub="(aka: strength of dependence)",
                      ticktype="detailed")
     } else {
       if(input$margin=="norm") {
-        perspGauss(cop(), xlab="x", ylab="y",
-                   zlab="", main="bivariate density",
+        perspGauss(cop(), xlab="x", ylab="y", zlab="",
+                   main="bivariate density",
+                   sub=paste(describeCop(cop(), "very short"),
+                             "with Gaussian margins"),
                    ticktype="detailed")
         if(input$sampleSize > 10)
           plot(qnorm(rCopula(input$sampleSize, cop())), asp=1, 
                main=paste("sample of size", input$sampleSize),
                xlab="x", ylab="y")
         else
-          contourGauss(cop(), xlab="x", ylab="y")
+          contourGauss(cop(), xlab="x", ylab="y", 
+                       main="contour of bivariate density",
+                       sub=paste(describeCop(cop(), "very short"),
+                                 "with Gaussian margins"))
       } else {
-        persp(cop(), dCopula, xlab="u", ylab="v",
-              zlab="", main="strength of dependence",
+        persp(cop(), dCopula, xlab="u", ylab="v", zlab="",
+              main="copula density", 
+              sub="(aka: strength of dependence)",
               ticktype="detailed")
-        plot(rCopula(input$sampleSize, cop()), asp=1, 
-             main=paste("sample of size", input$sampleSize),
-             xlab="u", ylab="v")
+        if(input$sampleSize > 10)
+          plot(rCopula(input$sampleSize, cop()), asp=1, 
+               main=paste("sample of size", input$sampleSize),
+               xlab="u", ylab="v")
+        else
+          contourCop(cop(), xlab="x", ylab="y", 
+                     main="contour of copula density")
       }
     }
   }, height="auto")
