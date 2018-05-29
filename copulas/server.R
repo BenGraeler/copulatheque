@@ -92,11 +92,11 @@ loadSpCop <- function() {
   
   calcKTauPol <- fitCorFun(bins, degree=3)
   
-  spCopula(components=list(normalCopula(0), tCopula(0, dispstr = "un"),
-                           frankCopula(1), normalCopula(0), claytonCopula(0),
-                           claytonCopula(0), claytonCopula(0), claytonCopula(0),
-                           claytonCopula(0), indepCopula()),
-                    distances=bins$meanDists,
+  spCopula(components=list(normalCopula(0.1), tCopula(0.1, dispstr = "un"),
+                           frankCopula(1), normalCopula(0.1), claytonCopula(0.1),
+                           claytonCopula(0.1), claytonCopula(0.1), claytonCopula(0.1),
+                           claytonCopula(0.1), indepCopula()),
+                    distances=c(0, bins$meanDists[-10]),
                     spDepFun=calcKTauPol, unit="m")
 }
 

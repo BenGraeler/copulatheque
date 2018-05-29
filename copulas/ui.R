@@ -172,7 +172,7 @@ fluidPage(title="Copulatheque",
                  ## Bivariate Spatial Copula
                  conditionalPanel(condition = "input.family == 'spCopula'",
                                   sliderInput("spatialDistance", "spatial distance:",
-                                              min=0, max=800, value=250, step=10,
+                                              min=0, max=700, value=50, step=10,
                                               animate=animationOptions(interval=500, loop=T)),
                                   plotOutput("corFunPlot", height=300)),
                  
