@@ -32,7 +32,7 @@ fluidPage(title="Copulatheque",
                                   "Tawn type 2 Copula" = "tawnT2Copula",
                                   "biv. Spatial Copula" = "spCopula")),
                
-                 selectInput("margin", "Marignal distribution function",
+                 selectInput("margin", "Marginal distribution function",
                              list("uniform" = "unif",
                                   "Gaussian" = "norm")),
                  
