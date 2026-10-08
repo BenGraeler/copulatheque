@@ -1,86 +1,85 @@
-## copulas small
+# copulas small
 
-library(shiny)
-library(spcopula)
+function(input, output, session) {
 
-# Define server logic required to plot various variables against mpg
-shinyServer(function(input, output) {
-  
-  # generate conditional slider
-  output$paramA <- renderUI({
-    paramB <- input$b
-    limA <- spcopula:::limA(paramB)
-    
-    # check whether slider a has once been acivated
-    if(is.null(input$a))
-      a <- 0
-    else 
-      a <- input$a
-    
-    sliderInput("a", "parameter a:",  
-                min = limA, max = 1, value = max(limA, a), step=0.01)
-  })
-    
-  checkFrank <- function(param) {
-    if(param==0)
-      return(indepCopula(2))
-    else
-      return(frankCopula(param))
-  }
-  
-  paramA <- reactive({
-    if(is.null(input$a))
-      return(0)
-    else
-      return(input$a)
-  })
-                     
-  paramB <- reactive({
-   if(is.null(input$b))
-     return(0)
-   else
-     return(input$b)
-  })
-                                        
-  cop <- reactive(switch(input$family,
-                         asCopula = asCopula(c(paramA(),paramB())),
-                         claytonCopula = claytonCopula(input$paramClayton),
-                         cqsCopula = cqsCopula(c(input$a,input$b)),
-                         frankCopula = checkFrank(input$paramFrank),
-                         normalCopula = normalCopula(input$paramEllip),
-                         gumbelCopula = gumbelCopula(input$paramGumbel),
-                         tCopula = tCopula(input$paramEllip, df=input$df)))
-  
-  output$caption <- renderText(describeCop(cop(), "very short"))
-  
-  fun <- reactive(switch(input$fun,
-                         dCopula = dCopula,
-                         pCopula = pCopula))
-  
-  titleFun <- reactive(switch(input$fun,
-                              dCopula = "PDF: strength of dependence",
-                              pCopula = "CDF"))
-  
-#   zlabFun <- reactive(switch(input$fun,
-#                               dCopula = "PDF",
-#                               pCopula = "CDF"))
+  spec <- reactive(copula_families[[input$family]])
 
-  output$kendallsTau <- renderText(paste("Kendall's tau:", round(tau(cop()),2)))
-  
-#   output$copulaSurface <- renderPlot(persp(cop(), fun(), xlab="u", ylab="v",
-#                                            zlab="", main=titleFun(),
-#                                            ticktype="detailed"))
-
-#   output$copulaSample <- renderPlot({plot(rCopula(500,cop()),asp=1)})
-  
-  output$copulaPlots <- renderPlot({
-    par(mfrow=c(1,2))
-    persp(cop(), fun(),xlab="u", ylab="v",
-          zlab="", main=titleFun(),
-          ticktype="detailed")
-    plot(rCopula(input$sampleSize, cop()), asp=1, 
-         main=paste("sample of size", input$sampleSize),
-         xlab="u", ylab="v")
+  rotation <- reactive({
+    if (is.null(spec()$rotated)) "none" else input$rotation
   })
-  
-})
+
+  # adapt the parameter slider to the range of the selected rotation
+  observeEvent(list(input$family, rotation()), {
+    req(!is.null(spec()$rotated_range))
+    id <- param_input_id(input$family)
+    range <- param_range(spec(), rotation())
+    value <- min(max(input[[id]], range[["min"]]), range[["max"]])
+
+    # keep cop() from using the out-of-range value until the slider is updated
+    if (value != input[[id]]) {
+      freezeReactiveValue(input, id)
+    }
+    updateSliderInput(session, id, min = range[["min"]], max = range[["max"]],
+                      value = value)
+  })
+
+  cop <- reactive({
+    param <- input[[param_input_id(input$family)]]
+    param2 <- input[[param2_input_id(input$family)]]
+    req(param, is.null(spec()$param2) || !is.null(param2))
+
+    tryCatch(
+      build_copula(input$family, param, param2, rotation(),
+                   df = as.numeric(input$df)),
+      error = function(e) {
+        validate(paste("The selected parameters are not admissible for this",
+                       "copula:", conditionMessage(e)))
+      }
+    )
+  })
+
+  output$caption <- renderText({
+    caption <- paste(spec()$label, "copula")
+    if (rotation() != "none") {
+      rotation_label <- names(rotation_labels)[rotation_labels == rotation()]
+      caption <- paste0(caption, ", rotated: ", rotation_label)
+    }
+    caption
+  })
+
+  output$kendalls_tau <- renderText({
+    # evaluate cop() first: inside S4 dispatch, validation messages would be
+    # turned into regular errors
+    copula <- cop()
+    format(round(tau(copula), 2), nsmall = 2)
+  })
+
+  output$tail_dependence <- renderText({
+    copula <- cop()
+    lambda <- tail_dependence(copula)
+    if (is.null(lambda)) {
+      "not available"
+    } else {
+      paste(format(round(lambda, 2), nsmall = 2), collapse = ", ")
+    }
+  })
+
+  # shared by the 2D and the 3D view
+  function_grid <- reactive({
+    copula <- cop()
+    copula_grid(copula, input$fun, input$margins)
+  })
+
+  output$function_plot <- renderPlot({
+    plot_copula_function(function_grid(), input$fun, input$margins)
+  })
+
+  output$function_plot_3d <- plotly::renderPlotly({
+    plot_copula_3d(function_grid(), input$fun, input$margins)
+  })
+
+  output$sample_plot <- renderPlot({
+    copula <- cop()
+    plot_copula_sample(rCopula(input$sample_size, copula), input$margins)
+  })
+}
