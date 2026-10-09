@@ -7,3 +7,5 @@
 *.Rproj
 .Rproj.user
 log
+# rsconnect deployment records
+rsconnect/
