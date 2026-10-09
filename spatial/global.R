@@ -166,8 +166,11 @@ model_table <- function(model) {
 
 model_globals <- function(model) {
   globals <- intersect(c("sill", "nugget", "k", "stAni"), names(model))
-  labels <- c(sill = "sill", nugget = "nugget", k = "k",
-              stAni = "spatio-temporal anisotropy (km/day)")
+  # vgmST() arguments, see ?vgmST
+  labels <- c(sill = "sill (joint spatio-temporal sill)",
+              nugget = "nugget (joint spatio-temporal nugget)",
+              k = "k (weight of the product)",
+              stAni = "stAni (spatio-temporal anisotropy, km per day)")
   if (length(globals) == 0) {
     return(NULL)
   }

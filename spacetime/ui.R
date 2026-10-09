@@ -1,228 +1,133 @@
-# spatial
+# spacetime
 
-library(shiny)
-library(gstat)
+# initial slider settings follow the PM10 sample and the fitted models
+initial_limits <- sample_limits(pm10_sample)
+initial_units <- lag_units(pm10_sample)
 
-load("fittedSTvariogramModels.RData")
+param_input <- function(family, comp, param, value) {
+  id <- param_id(family, comp, param)
+  label <- param_label(family, comp, param, initial_units)
+  if (param == "model") {
+    return(selectInput(id, label, choices = vgm_families, selected = value))
+  }
+  settings <- slider_settings(family, comp, param, value, initial_limits)
+  input <- sliderInput(id, label, min = settings$min, max = settings$max,
+                       value = settings$value, step = settings$step)
+  if (param == "kappa") {
+    # only shown for families with a shape parameter
+    model_id <- param_id(family, comp, "model")
+    input <- conditionalPanel(
+      sprintf("[%s].includes(input.%s)",
+              paste0("'", kappa_families, "'", collapse = ", "), model_id),
+      input
+    )
+  }
+  input
+}
 
-vgmMods <- as.character(vgm()$short[-c(1,16,19:20)]) 
-names(vgmMods) <- as.character(vgm()$long[-c(1,16,19:20)]) 
+param_panels <- lapply(names(model_specs), function(family) {
+  spec <- model_specs[[family]]
+  values <- model_params(fitted_models[[family]], family)
+  params <- family_params(family)
+  inputs <- function(rows) {
+    lapply(rows, function(i) {
+      param_input(family, params$component[i], params$param[i],
+                  values[[params$id[i]]])
+    })
+  }
+  comp_titles <- c(space = "space: spatial variogram",
+                   time = "time: temporal variogram",
+                   joint = "joint: joint spatio-temporal variogram")
+  conditionalPanel(
+    condition = sprintf("input.family == '%s'", family),
+    inputs(which(is.na(params$component))),
+    accordion(
+      open = FALSE,
+      !!!lapply(spec$components, function(comp) {
+        accordion_panel(comp_titles[[comp]],
+                        inputs(which(params$component %in% comp)))
+      })
+    )
+  )
+})
 
+page_sidebar(
+  title = "Spatio-Temporal Variogram Families",
+  theme = bs_theme(version = 5),
 
-# Define UI for miles per gallon application
-shinyUI(pageWithSidebar(
-  
-  # Application title
-  headerPanel("Different Spatio-Temporal Variogram Families"),
-  
-  sidebarPanel("This small shiny app illustrates a couple of different spatio-temporal variogram families as defined in", 
-               a("gstat", href="http://cran.r-project.org/web/packages/gstat/index.html", target="_blank"),
-               HTML("The sample variogram is calculated from daily mean PM<sub>10</sub>"),
-               "concentrations across Germany during the year 2005 (see 'demo(stkrige)' in gstat).",
-               "The app is hosted by", a("52°North.", href="http://www.52north.org", target="_blank"),
-               "Please direct any comments to", a("Benedikt Gräler", href="http://ben.graeler.org/", target="_blank"),".", br(),br(),
-               selectInput("family", "Variogram family:", 
-                           list("separable cov. model" =  "separable",
-                                "product-sum cov. model" = "productSum",
-                                "sum-metric cov. model" = "sumMetric",
-                                "simple sum-metric cov. model" = "simpleSumMetric",
-                                "metric cov. model" = "metric")),
-               selectInput("type", "Select plot type:",
-                           list("levelplot" = "levelplot",
-                                "wireframe" = "wireframe")),
-               
-               # separable model
-               conditionalPanel(condition = "input.family == 'separable'",
-                                sliderInput("sep.sill", "spatio-temporal sill:",
-                                            min = 0, max = 160, 
-                                            value = round(fitSepModel$sill,digits=1), 
-                                            step=0.1),
-                                sliderInput("sep.space.sill", "spatial sill:",
-                                            min = 0.01, max = 1, 
-                                            value = round(fitSepModel$space$psill[2],digits=2), 
-                                            step=0.01),
-                                selectInput("sep.space.fam", "spatial variogram family:",
-                                            vgmMods,
-                                            selected=fitSepModel$space$model[2]),
-                                sliderInput("sep.space.range", "spatial range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitSepModel$space$range[2],digits=0), 
-                                            step=1),
-                                
-                                sliderInput("sep.time.sill", "temporal sill:",
-                                            min = 0.01, max = 1, 
-                                            value = round(fitSepModel$time$psill[2],digits=2), 
-                                            step=0.01),
-                                selectInput("sep.time.fam", "temporal variogram family:",
-                                            vgmMods,
-                                            selected=fitSepModel$time$model[2]),
-                                sliderInput("sep.time.range", "temporal range [days]:",
-                                            min = 0.1, max = 20, 
-                                            value = round(fitSepModel$time$range[2],digits=1), 
-                                            step=0.1)),
-               
-               # product-sum model
-               conditionalPanel(condition = "input.family == 'productSum'",
-                                sliderInput("ps.k", "weight k:",
-                                            min = 0, max = 1,
-                                            value = round(fitProdSumModel$k, digits=2),
-                                            step=0.01),
-                                sliderInput("ps.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitProdSumModel$space$psill[2], digits=1), 
-                                            step=0.1),
-                                selectInput("ps.space.fam", "spatial variogram family:",
-                                            vgmMods,
-                                            selected=fitProdSumModel$space$model[2]),
-                                sliderInput("ps.space.range", "spatial range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitProdSumModel$space$range[2], digits=0), 
-                                            step=1),
-                                sliderInput("ps.space.nugget", "spatial nugget:",
-                                            min = 1, max = 500, 
-                                            value = round(fitProdSumModel$space$psill[1], digits=0), 
-                                            step=1),
-                                
-                                sliderInput("ps.time.sill", "temporal sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitProdSumModel$time$psill[2], digits=2), 
-                                            step=0.1),
-                                selectInput("ps.time.fam", "temporal variogram family:",
-                                            vgmMods,
-                                            selected=fitProdSumModel$time$model[2]),
-                                sliderInput("ps.time.range", "temporal range [days]:",
-                                            min = 0.1, max = 20, 
-                                            value = round(fitProdSumModel$time$range[2], digits=1), 
-                                            step=0.1),
-                                sliderInput("ps.time.nugget", "temporal nugget:",
-                                            min = 0.1, max = 20, 
-                                            value = round(fitProdSumModel$time$psill[1], digits=2), 
-                                            step=0.1)),
-               
-               # sum-metric model
-               conditionalPanel(condition = "input.family == 'sumMetric'",
-                                sliderInput("sumMetric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
-                                            value = round(fitSumMetricModel$stAni, digits=1), 
-                                            step=0.1),
-                                sliderInput("sumMetric.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitSumMetricModel$space$psill[2], digits=1), 
-                                            step=0.1),
-                                selectInput("sumMetric.space.fam", "spatial variogram family:",
-                                            vgmMods,
-                                            selected=fitSumMetricModel$space$model[2]),
-                                sliderInput("sumMetric.space.range", "spatial range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitSumMetricModel$space$range[2], digits=0), 
-                                            step=1),
-                                sliderInput("sumMetric.space.nugget", "spatial nugget:",
-                                            min = 0, max = 80, 
-                                            value = round(fitSumMetricModel$space$psill[1], digits=1), 
-                                            step=0.1),
-                                
-                                sliderInput("sumMetric.time.sill", "temporal sill:",
-                                            min = 0.01, max = 160, 
-                                            value = round(fitSumMetricModel$time$psill[2], digits=2), 
-                                            step=0.01),
-                                selectInput("sumMetric.time.fam", "temporal variogram family:",
-                                            vgmMods,
-                                            selected=fitSumMetricModel$time$model[2]),
-                                sliderInput("sumMetric.time.range", "temporal range [days]:",
-                                            min = 0.1, max = 20, 
-                                            value = round(fitSumMetricModel$time$range[2], digits=0), 
-                                            step=0.1),
-                                sliderInput("sumMetric.time.nugget", "temporal nugget:",
-                                            min = 0, max = 80, 
-                                            value = round(fitSumMetricModel$time$psill[1], digits=1), 
-                                            step=0.1),
-                                
-                                sliderInput("sumMetric.joint.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitSumMetricModel$joint$psill[2], digits=1), 
-                                            step=0.1),
-                                selectInput("sumMetric.joint.fam", "joint variogram family:",
-                                            vgmMods,
-                                            selected=fitSumMetricModel$joint$model[2]),
-                                sliderInput("sumMetric.joint.range", "joint range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitSumMetricModel$joint$range[2], digits=0), 
-                                            step=1),
-                                sliderInput("sumMetric.joint.nugget", "joint nugget:",
-                                            min = 0, max = 80, 
-                                            value = round(fitSumMetricModel$joint$psill[1], digits=1), 
-                                            step=0.1)),
-               
-               # simple-sum-metric model
-               conditionalPanel(condition = "input.family == 'simpleSumMetric'",
-                                sliderInput("simpleSumMetric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
-                                            value = round(fitSimpleSumMetricModel$stAni, digits=1), 
-                                            step=0.1),
-                                sliderInput("simpleSumMetric.nugget", "spatio-temporal nugget:",
-                                            min = 0, max = 80, 
-                                            value = round(fitSimpleSumMetricModel$nugget, digits=1), 
-                                            step=0.1),
-                                sliderInput("simpleSumMetric.space.sill", "spatial sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitSimpleSumMetricModel$space$psill, digits=1), 
-                                            step=0.1),
-                                selectInput("simpleSumMetric.space.fam", "spatial variogram family:",
-                                            vgmMods,
-                                            selected=fitSimpleSumMetricModel$space$model),
-                                sliderInput("simpleSumMetric.space.range", "spatial range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitSimpleSumMetricModel$space$range, digits=0), 
-                                            step=1),                                
-                                
-                                sliderInput("simpleSumMetric.time.sill", "temporal sill:",
-                                            min = 0.01, max = 160, 
-                                            value = round(fitSimpleSumMetricModel$time$psill, digits=2), 
-                                            step=0.01),
-                                selectInput("simpleSumMetric.time.fam", "temporal variogram family:",
-                                            vgmMods,
-                                            selected=fitSimpleSumMetricModel$time$model),
-                                sliderInput("simpleSumMetric.time.range", "temporal range [days]:",
-                                            min = 0.1, max = 20, 
-                                            value = round(fitSimpleSumMetricModel$time$range, digits=1), 
-                                            step=0.1),
-                            
-                                sliderInput("simpleSumMetric.joint.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitSimpleSumMetricModel$joint$psill, digits=1), 
-                                            step=0.1),
-                                selectInput("simpleSumMetric.joint.fam", "joint variogram family:",
-                                            vgmMods,
-                                            selected=fitSimpleSumMetricModel$joint$model),
-                                sliderInput("simpleSumMetric.joint.range", "joint range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitSimpleSumMetricModel$joint$range, digits=0), 
-                                            step=1)),
-               
-               # metric model
-               conditionalPanel(condition = "input.family == 'metric'",
-                                sliderInput("metric.stAni", "spatio-temporal anisotropy [km/day]:",
-                                            min = 0, max = 250, 
-                                            value = round(fitMetricModel$stAni, digits=1), 
-                                            step=0.1),
-                                sliderInput("metric.sill", "joint sill:",
-                                            min = 0.1, max = 160, 
-                                            value = round(fitMetricModel$joint$psill[2], digits=1), 
-                                            step=0.1),
-                                selectInput("metric.fam", "joint variogram family:",
-                                            vgmMods,
-                                            selected=fitMetricModel$joint$model[2]),
-                                sliderInput("metric.range", "joint range [km]:",
-                                            min = 1, max = 500, 
-                                            value = round(fitMetricModel$joint$range[2], digits=0), 
-                                            step=1),
-                                sliderInput("metric.nugget", "joint nugget:",
-                                            min = 0, max = 80, 
-                                            value = round(fitMetricModel$joint$psill[1], digits=1), 
-                                            step=0.1))
-               ),
-  
-  mainPanel(h2(textOutput("caption")),
-            plotOutput("vgmPlot"),
-            verbatimTextOutput("model"))  
-))
+  sidebar = sidebar(
+    width = 360,
+    p(
+      "This small shiny app lets you explore the spatio-temporal variogram",
+      "families as defined in the",
+      a("gstat", href = "https://cran.r-project.org/package=gstat",
+        target = "_blank"),
+      "R package. By default, the sample variogram is calculated from daily",
+      "mean", HTML("PM<sub>10</sub>"), "concentrations across Germany during",
+      "the year 2005 (see", code("demo(stkrige)"), "in gstat)."
+    ),
+    fileInput(
+      "sample_file", "Your own sample variogram (optional)",
+      accept = c(".rds", ".RData", ".rda"),
+      placeholder = ".rds or .RData file"
+    ),
+    helpText(
+      "The file needs to hold a single sample variogram as returned by",
+      code("gstat::variogramST()", .noWS = "after"), ".",
+      actionLink("reset_sample", "Back to the PM10 sample.")
+    ),
+    selectInput("family", "Variogram family",
+                choices = setNames(names(model_labels),
+                                   paste(model_labels, "covariance model"))),
+    radioButtons(
+      "view", "Plot type",
+      choices = c("heat map" = "heatmap",
+                  "difference to sample" = "difference",
+                  "spatial profiles" = "profiles",
+                  "interactive 3D" = "3d")
+    ),
+    param_panels,
+    actionButton("fit", "Fit model to sample",
+                 icon = icon("wand-magic-sparkles"), class = "btn-primary"),
+    p(
+      "Written by",
+      a("Benedikt Gräler", href = "http://ben.graeler.org", target = "_blank",
+        .noWS = "after"),
+      ", updated Oct 2026."
+    )
+  ),
+
+  layout_columns(
+    fill = FALSE,
+    value_box(
+      title = "Root-mean-squared error of the model",
+      value = textOutput("rmse")
+    ),
+    value_box(
+      title = "Overall spatio-temporal sill",
+      value = textOutput("st_sill")
+    ),
+    value_box(
+      title = "Sample variogram",
+      value = textOutput("sample_name"),
+      p(textOutput("sample_size", inline = TRUE))
+    )
+  ),
+  card(
+    full_screen = TRUE,
+    min_height = 450,
+    card_header(textOutput("caption", inline = TRUE)),
+    as_fill_carrier(
+      conditionalPanel("input.view != '3d'", plotOutput("vgm_plot"))
+    ),
+    as_fill_carrier(
+      conditionalPanel("input.view == '3d'",
+                       plotly::plotlyOutput("vgm_plot_3d"))
+    )
+  ),
+  card(
+    fill = FALSE,
+    card_header("R code of the model"),
+    verbatimTextOutput("model_code")
+  )
+)

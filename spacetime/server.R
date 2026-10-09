@@ -1,191 +1,130 @@
-## spatial
-# setwd("spatial/")
-library(gstat)
-library(shiny)
+# spacetime
 
-load("fittedSTvariogramModels.RData")
-data(vv)
+function(input, output, session) {
 
-## gstat fix
-library(lattice)
-library(sp)
-plotStVariogram = function(x, model=NULL, ..., col = bpy.colors(), xlab, ylab,
-                            map = TRUE, convertMonths = FALSE, as.table=T,
-                            wireframe = FALSE, both = FALSE, all=FALSE) {
-  lst = list(...)
-  if (!is.null(lst$col.regions))
-    col = lst$col.regions
-  if (is(x$timelag, "yearmon")) {
-    if (convertMonths) {
-      x$timelag = as.numeric(x$timelag) * 12
-      attr(x$timelag, "units") = "months"
-    } else
-      attr(x$timelag, "units") = "years"
-  }
-  if (missing(xlab)) {
-    xlab = "distance"
-    u =  attr(x$spacelag, "units")
-    if (!is.null(u))
-      xlab = paste(xlab, " (", u, ")", sep="")
-  }
-  if (missing(ylab)) {
-    ylab = "time lag"
-    u = attr(x$timelag, "units")
-    if (!is.null(u))
-      ylab = paste(ylab, " (", u, ")", sep="")
-  }
-  if(!is.null(model)) {
-    if (is(model,"StVariogramModel"))
-      model <- list(model)
-    for (mod in model) {
-      x[[mod$stModel]] <- variogramSurface(mod, x[,c("spacelag","timelag")])$model
-    }
-  }
-  x0 = x # needed by wireframe()
-  if (!is.null(model)) {
-    modelNames  <- sapply(model, function(x) x$stModel)
-    v0 <- x[,c("dist","id","spacelag","timelag")]
-    for (i in modelNames) {
-      v0 <- rbind(v0, x[,c("dist","id","spacelag","timelag")])
-    }
-    v0$what = factor(c(rep("sample", nrow(x)), rep(modelNames, each=nrow(x))),
-                     levels=c("sample", modelNames),ordered=T)
-    v0$gamma = c(x$gamma, unlist(x[,modelNames]))
-    x = v0
-  }
-  if (wireframe) { 
-    if (!is.null(model)) {
-      if (both) { # plot sample and first model in one wireframe plot
-        if (length(model) > 1)
-          warning("Only the first of the provided variogram models will be used.")
-        wireframe(as.formula(paste(model[[1]]$stModel,"+gamma ~ spacelag*timelag")),
-                  x0, drape = TRUE, col.regions = col, 
-                  xlab = xlab, ylab = ylab, ...)
+  sample <- reactiveVal(pm10_sample)
+  sample_name <- reactiveVal("PM10 Germany 2005")
+
+  # adapt ranges, labels and values of a family's inputs to the sample
+  update_inputs <- function(family, values, sample) {
+    limits <- sample_limits(sample)
+    units <- lag_units(sample)
+    params <- family_params(family)
+    for (i in seq_len(nrow(params))) {
+      id <- params$id[i]
+      label <- param_label(family, params$component[i], params$param[i], units)
+      if (params$param[i] == "model") {
+        updateSelectInput(session, id, label = label, selected = values[[id]])
       } else {
-        if (all) { # plot sample and all models in separate wireframes
-          wireframe(gamma ~ spacelag*timelag | what, 
-                    x, drape = TRUE, col.regions = col, 
-                    xlab = xlab, ylab = ylab, as.table=as.table, ...)
-        } else { # plot all theoretical models in separate wireframes, the default
-          if (length(model) > 1)
-            wireframe(gamma ~ spacelag*timelag | what, 
-                      x[-(1:nrow(x0)),], drape = TRUE, col.regions = col, 
-                      xlab = xlab, ylab = ylab, as.table=as.table, ...)
-          else 
-            wireframe(as.formula(paste(model[[1]]$stModel,"~ spacelag*timelag")), 
-                      x0, drape = TRUE, col.regions = col, 
-                      xlab = xlab, ylab = ylab, as.table=as.table, ...)
-        }
+        settings <- slider_settings(family, params$component[i],
+                                    params$param[i], values[[id]], limits)
+        updateSliderInput(session, id, label = label, min = settings$min,
+                          max = settings$max, value = settings$value,
+                          step = settings$step)
       }
-    } else # without a model, plot only the sample variogram as a wireframe
-      wireframe(gamma ~ spacelag * timelag, x0, drape = TRUE, col = col,
-                xlab = xlab, ylab = ylab, ...)
-  } else if (map) {
-    if (!is.null(model))
-      f = gamma ~ spacelag + timelag | what
-    else
-      f = gamma ~ spacelag + timelag
-    levelplot(f, x, xlab = xlab, ylab = ylab, col.regions = col, as.table=as.table, ...)
-  } else { # not map, not wireplot
-    if (!is.null(model))
-      f = gamma ~ dist | what
-    else
-      f = gamma ~ dist
-    x$id = factor(x$id, levels=unique(x$id))
-    bp = bpy.colors(length(levels(x$id)))
-    ps = list(superpose.line=list(col=bp), superpose.symbol=list(col=bp))
-    ylim = c(0, max(x$gamma) * 1.04)
-    xlim = c(0, max(x$dist) * 1.04)
-    xyplot(f, x, groups = x$id, type='b', ylim = ylim, xlim = xlim,
-           auto.key = list(space = "right"), xlab = xlab, 
-           par.settings = ps, ...)
+    }
   }
+
+  current_values <- function(family) {
+    ids <- family_params(family)$id
+    setNames(lapply(ids, function(id) input[[id]]), ids)
+  }
+
+  set_sample <- function(new_sample, name) {
+    old_sample <- sample()
+    sample(new_sample)
+    sample_name(name)
+    for (family in names(model_specs)) {
+      values <- rescale_params(family, current_values(family), old_sample,
+                               new_sample)
+      update_inputs(family, values, new_sample)
+    }
+  }
+
+  observeEvent(input$sample_file, {
+    file <- input$sample_file
+    new_sample <- tryCatch(
+      read_sample(file$datapath, file$name),
+      error = function(e) {
+        showNotification(paste("The sample variogram could not be read:",
+                               conditionMessage(e)), type = "error")
+        NULL
+      }
+    )
+    req(new_sample)
+    set_sample(new_sample, file$name)
+  })
+
+  observeEvent(input$reset_sample, set_sample(pm10_sample, "PM10 Germany 2005"))
+
+  temporal_unit <- reactive(lag_units(sample())[["time"]])
+
+  values <- reactive({
+    values <- current_values(input$family)
+    req(!any(vapply(values, is.null, logical(1))))
+    values
+  })
+
+  model <- reactive({
+    tryCatch(
+      build_model(input$family, values(), temporal_unit()),
+      error = function(e) {
+        validate(paste("The selected parameters do not define a valid model:",
+                       conditionMessage(e)))
+      }
+    )
+  })
+
+  observeEvent(input$fit, {
+    fitted <- withProgress(
+      message = "Fitting the model ...",
+      tryCatch(fit_model(sample(), model()), error = function(e) {
+        showNotification(paste("The fit failed:", conditionMessage(e)),
+                         type = "error")
+        NULL
+      })
+    )
+    req(fitted)
+    update_inputs(input$family, model_params(fitted, input$family), sample())
+  })
+
+  output$caption <- renderText(
+    paste(model_labels[[input$family]], "covariance model")
+  )
+
+  output$rmse <- renderText({
+    current <- model()
+    format(round(model_rmse(sample(), current), 2), nsmall = 2)
+  })
+
+  output$sample_name <- renderText(sample_name())
+
+  output$sample_size <- renderText({
+    points <- sample_points(sample())
+    sprintf("%d spatial and %d temporal lags",
+            length(unique(points$spacelag)), length(unique(points$timelag)))
+  })
+
+  output$vgm_plot <- renderPlot({
+    req(input$view != "3d")
+    current <- model()
+    switch(input$view,
+           heatmap = plot_heat_map(sample(), current),
+           difference = plot_difference(sample(), current),
+           profiles = plot_profiles(sample(), current))
+  })
+
+  output$vgm_plot_3d <- plotly::renderPlotly({
+    current <- model()
+    plot_3d(sample(), current)
+  })
+
+  output$st_sill <- renderText({
+    current <- model()
+    format(round(model_sill(current), 2), nsmall = 2)
+  })
+
+  output$model_code <- renderText(
+    model_code(input$family, values(), temporal_unit())
+  )
 }
-
-# print StVariogramModel
-printStVariogramModel <- function(x) {
-  possComp <- c("space", "time", "joint")
-  for(comp in possComp[possComp %in% names(x)]) {
-    rownames(x[[comp]]) <- 1:nrow(x[[comp]])
-    cat(paste(comp,"component: \n"))
-    print(x[[comp]])
-  }
-  
-  possAddPar <- c("sill", "nugget", "stAni")
-  for(addPar in possAddPar[possAddPar %in% names(x)]) {
-    cat(paste(addPar, ": ",x[[addPar]],"\n", sep=""))
-  }
-}
-
-
-# Define server logic
-shinyServer(function(input, output) {
-  output$caption <- renderText(switch(input$family,
-                                      separable = "separable covariance model",
-                                      productSum = "product-sum covariance model",
-                                      sumMetric = "sum-metric covariance model",
-                                      simpleSumMetric = "simple sum-metric covariance model",
-                                      metric = "metric covariance model"))
-  
-  acModel <-reactive(switch(input$family,
-                            separable = vgmST("separable", 
-                                              space=vgm(input$sep.space.sill,
-                                                        input$sep.space.fam,
-                                                        input$sep.space.range,
-                                                        1-input$sep.space.sill),
-                                              time=vgm(input$sep.time.sill,
-                                                       input$sep.time.fam,
-                                                       input$sep.time.range,
-                                                       1-input$sep.time.sill),
-                                              sill=input$sep.sill),
-                            productSum = vgmST("productSum", 
-                                               space=vgm(input$ps.space.sill,
-                                                         input$ps.space.fam,
-                                                         input$ps.space.range,
-                                                         input$ps.space.nugget),
-                                               time=vgm(input$ps.time.sill,
-                                                        input$ps.time.fam,
-                                                        input$ps.time.range,
-                                                        input$ps.time.nugget),
-                                               k=input$ps.k),
-                            sumMetric = vgmST("sumMetric", 
-                                              space=vgm(input$sumMetric.space.sill,
-                                                        input$sumMetric.space.fam,
-                                                        input$sumMetric.space.range,
-                                                        input$sumMetric.space.nugget),
-                                              time=vgm(input$sumMetric.time.sill,
-                                                        input$sumMetric.time.fam,
-                                                        input$sumMetric.time.range,
-                                                        input$sumMetric.time.nugget),
-                                              joint=vgm(input$sumMetric.joint.sill,
-                                                        input$sumMetric.joint.fam,
-                                                        input$sumMetric.joint.range,
-                                                        input$sumMetric.joint.nugget),
-                                              stAni=input$sumMetric.stAni),
-                            simpleSumMetric = vgmST("simpleSumMetric", 
-                                                    space=vgm(input$simpleSumMetric.space.sill,
-                                                              input$simpleSumMetric.space.fam,
-                                                              input$simpleSumMetric.space.range),
-                                                    time=vgm(input$simpleSumMetric.time.sill,
-                                                             input$simpleSumMetric.time.fam,
-                                                             input$simpleSumMetric.time.range),
-                                                    joint=vgm(input$simpleSumMetric.joint.sill,
-                                                              input$simpleSumMetric.joint.fam,
-                                                              input$simpleSumMetric.joint.range),
-                                                    nugget=input$simpleSumMetric.nugget,
-                                                    stAni=input$simpleSumMetric.stAni),
-                            metric = vgmST("metric", 
-                                           joint=vgm(input$metric.sill,
-                                                     input$metric.fam,
-                                                     input$metric.range,
-                                                     input$metric.nugget),
-                                           stAni=input$metric.stAni)))
-  
-  output$vgmPlot <- renderPlot({
-    switch(input$type,
-           levelplot = print(plot(vv, acModel())),
-           wireframe = print(plotStVariogram(vv, acModel(), wireframe=TRUE, all=TRUE, scales=list(arrows=FALSE))))
-    }, width=800, height=400)
-  
-  output$model <- renderPrint(printStVariogramModel(acModel()))
-})
